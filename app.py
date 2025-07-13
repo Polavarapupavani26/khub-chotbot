@@ -109,8 +109,8 @@ def delete_chat_session(chat_id):
         return jsonify({'message': f'Deleted {chat_id}'})
     return jsonify({'error': 'Chat session not found'}), 404
 
-if __name__ == '__main__':
+if __name__== '_main_':
     os.makedirs('static', exist_ok=True)
     os.makedirs('templates', exist_ok=True)
-    print("✅ Flask is running...")
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000)) 
+    app.run(host='0.0.0.0', port=port)
