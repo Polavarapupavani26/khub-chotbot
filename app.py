@@ -109,7 +109,7 @@ def delete_chat_session(chat_id):
         return jsonify({'message': f'Deleted {chat_id}'})
     return jsonify({'error': 'Chat session not found'}), 404
 
-if __name__== '_main_':
+if __name__== '__main__':
     os.makedirs('static', exist_ok=True)
     os.makedirs('templates', exist_ok=True)
     port = int(os.environ.get("PORT", 5000)) 
