@@ -1,109 +1,102 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const chatContainer = document.getElementById('chat-container');
-    const userInput = document.getElementById('user-input');
-    const sendBtn = document.getElementById('send-btn');
-    const newChatBtn = document.getElementById('new-chat-btn');
-    const chatHistoryList = document.getElementById('chat-history');
+const chatBox = document.getElementById('chat-box');
+const inputField = document.getElementById('user-input');
+const sendButton = document.getElementById('send-btn');
+const newChatButton = document.getElementById('new-chat-btn');
+const chatList = document.getElementById('chat-list');
 
-    function appendMessage(role, content) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', role === 'user' ? 'user-message' : 'bot-message');
-        messageDiv.textContent = content;
-        chatContainer.appendChild(messageDiv);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+let currentChatId = null;
+
+function appendMessage(role, text) {
+    const message = document.createElement('div');
+    message.classList.add('message', role);
+    message.innerHTML = `<span>${text}</span>`;
+    chatBox.appendChild(message);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+async function fetchChatHistorySummary() {
+    const res = await fetch('/get_chat_history_summary');
+    const history = await res.json();
+
+    chatList.innerHTML = '';
+    history.forEach(chat => {
+        const item = document.createElement('div');
+        item.classList.add('chat-item');
+        item.innerHTML = `
+            <span onclick="loadChatSession('${chat.chat_id}')">${chat.title}</span>
+            <button onclick="deleteChatSession('${chat.chat_id}')">🗑️</button>
+        `;
+        chatList.appendChild(item);
+    });
+}
+
+async function loadChatSession(chatId) {
+    const res = await fetch(`/get_chat_session/${chatId}`);
+    const data = await res.json();
+
+    if (data.error) {
+        alert(data.error);
+        return;
     }
 
-    async function sendMessage() {
-        const message = userInput.value.trim();
-        if (!message) return;
+    chatBox.innerHTML = '';
+    currentChatId = chatId;
 
-        appendMessage('user', message);
-        userInput.value = '';
+    data.forEach(msg => {
+        appendMessage(msg.role, msg.content);
+    });
+}
 
-        try {
-            const response = await fetch('/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message })
-            });
+async function deleteChatSession(chatId) {
+    if (!confirm("Are you sure you want to delete this chat?")) return;
 
-            const data = await response.json();
-            if (data.response) {
-                appendMessage('bot', data.response);
-                loadChatHistory();
-            } else {
-                appendMessage('bot', 'Something went wrong. Please try again.');
-            }
-        } catch (err) {
-            appendMessage('bot', 'Error sending message.');
-        }
+    const res = await fetch(`/delete_chat_session/${chatId}`, {
+        method: 'DELETE'
+    });
+    const data = await res.json();
+    alert(data.message || data.error);
+    if (chatId === currentChatId) {
+        chatBox.innerHTML = '';
+        currentChatId = null;
     }
+    fetchChatHistorySummary();
+}
 
-    async function startNewChat() {
-        await fetch('/new_chat', { method: 'POST' });
-        chatContainer.innerHTML = '';
-        loadChatHistory();
-    }
+async function startNewChat() {
+    await fetch('/new_chat', { method: 'POST' });
+    chatBox.innerHTML = '';
+    currentChatId = null;
+}
 
-    async function loadChatHistory() {
-        try {
-            const response = await fetch('/get_chat_history_summary');
-            const chats = await response.json();
+async function sendMessage() {
+    const text = inputField.value.trim();
+    if (!text) return;
 
-            chatHistoryList.innerHTML = '';
-            chats.forEach(chat => {
-                const chatItem = document.createElement('div');
-                chatItem.classList.add('chat-item');
-                chatItem.textContent = chat.title + ` (${chat.message_count})`;
+    appendMessage('user', text);
+    inputField.value = '';
 
-                chatItem.addEventListener('click', () => loadChatSession(chat.chat_id));
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.textContent = '🗑️';
-                deleteBtn.classList.add('delete-btn');
-                deleteBtn.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    await deleteChatSession(chat.chat_id);
-                });
-
-                chatItem.appendChild(deleteBtn);
-                chatHistoryList.appendChild(chatItem);
-            });
-        } catch (err) {
-            console.error('Failed to load chat history:', err);
-        }
-    }
-
-    async function loadChatSession(chatId) {
-        try {
-            const response = await fetch(`/get_chat_session/${chatId}`);
-            const messages = await response.json();
-
-            chatContainer.innerHTML = '';
-            messages.forEach(msg => {
-                appendMessage(msg.role, msg.content);
-            });
-        } catch (err) {
-            console.error('Failed to load chat session:', err);
-        }
-    }
-
-    async function deleteChatSession(chatId) {
-        try {
-            await fetch(`/delete_chat_session/${chatId}`, { method: 'DELETE' });
-            loadChatHistory();
-            chatContainer.innerHTML = '';
-        } catch (err) {
-            console.error('Failed to delete chat session:', err);
-        }
-    }
-
-    sendBtn.addEventListener('click', sendMessage);
-    userInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') sendMessage();
+    const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
     });
 
-    newChatBtn.addEventListener('click', startNewChat);
+    const data = await res.json();
+    if (data.response) {
+        currentChatId = data.chat_id;
+        appendMessage('bot', data.response);
+        fetchChatHistorySummary();
+    } else {
+        appendMessage('bot', 'Something went wrong!');
+    }
+}
 
-    loadChatHistory();
+sendButton.addEventListener('click', sendMessage);
+inputField.addEventListener('keypress', e => {
+    if (e.key === 'Enter') sendMessage();
 });
+newChatButton.addEventListener('click', startNewChat);
+
+window.onload = () => {
+    fetchChatHistorySummary();
+};
