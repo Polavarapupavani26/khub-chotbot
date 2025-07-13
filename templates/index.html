@@ -3,26 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Gemini Chatbot</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <title>Pavani's Vhatbot</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <header>Pavani's Vhatbot</header>
+
   <div class="container">
-    <aside class="sidebar">
+    <!-- Sidebar: Chat History -->
+    <aside class="sidebar" id="history">
       <h2>Chat History</h2>
-      <button id="new-chat-btn">➕ New Chat</button>
-      <div id="chat-history" class="chat-history"></div>
+      <ul id="historyList"></ul>
     </aside>
 
-    <main class="chat-section">
-      <div id="chat-container" class="chat-container"></div>
-      <div class="input-section">
-        <input type="text" id="user-input" placeholder="Type your message here..." autocomplete="off" />
-        <button id="send-btn">Send</button>
+    <!-- Main Chat Area -->
+    <main class="chat-area">
+      <div class="chat-container" id="chat">
+        <div class="message bot">Hello! I'm Pavani's Vhatbot. How can I assist you today?</div>
+      </div>
+
+      <div class="input-area">
+        <input type="text" id="userInput" placeholder="Type your message here..." />
+        <button onclick="sendMessage()">Send</button>
       </div>
     </main>
   </div>
 
-  <script src="/static/script.js"></script>
+  <script>
+    function sendMessage() {
+      const input = document.getElementById("userInput");
+      const message = input.value.trim();
+      if (message === "") return;
+
+      const chat = document.getElementById("chat");
+      const history = document.getElementById("historyList");
+
+      const userMsg = document.createElement("div");
+      userMsg.className = "message user";
+      userMsg.textContent = message;
+      chat.appendChild(userMsg);
+
+      const histItem = document.createElement("li");
+      histItem.textContent = "You: " + message;
+      history.appendChild(histItem);
+
+      const botMsg = document.createElement("div");
+      botMsg.className = "message bot";
+      botMsg.textContent = "🤖 Pavani's Vhatbot is thinking...";
+      chat.appendChild(botMsg);
+
+      input.value = "";
+      chat.scrollTop = chat.scrollHeight;
+
+      setTimeout(() => {
+        botMsg.textContent = "This is a sample reply from Pavani's Vhatbot!";
+      }, 1000);
+    }
+  </script>
 </body>
 </html>
