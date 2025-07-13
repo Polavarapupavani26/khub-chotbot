@@ -4,23 +4,19 @@ from flask import Flask, render_template, request, jsonify, session
 import google.generativeai as genai 
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'a_very_secret_key_for_dev_if_not_in_env')
 
-# Configure Gemini API
 gemini_api_key = os.getenv("GOOGLE_API_KEY")
 if not gemini_api_key:
     raise ValueError("GOOGLE_API_KEY not set in .env file")
 genai.configure(api_key=gemini_api_key)
 
-# Initialize Gemini model
 model = genai.GenerativeModel('gemini-1.5-flash')
 CHAT_HISTORY_FILE = 'chat_history.json'
 
-# Load existing chat history
 def load_chat_history():
     if os.path.exists(CHAT_HISTORY_FILE):
         with open(CHAT_HISTORY_FILE, 'r') as f:
@@ -30,7 +26,6 @@ def load_chat_history():
                 return {}
     return {}
 
-# Save chat history
 def save_chat_history(history):
     with open(CHAT_HISTORY_FILE, 'w') as f:
         json.dump(history, f, indent=4)
@@ -48,7 +43,9 @@ def new_chat():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    user_message = request.json.get('message')
+    if not request.is_json:
+        return jsonify({'error': 'Invalid request, JSON expected'}), 400
+    user_message = request.json.get('message') if request.json else None
     chat_id = session.get('current_chat_id')
 
     if not user_message:
@@ -65,10 +62,7 @@ def chat():
     try:
         gemini_history = []
         for msg in current_convo:
-            gemini_history.append({
-                "role": "user" if msg["role"] == "user" else "model",
-                "parts": msg["parts"]
-            })
+            gemini_history.append({"role": "user" if msg["role"] == "user" else "model", "parts": msg["parts"]})
         response = model.generate_content(gemini_history)
         bot_response = response.text
     except Exception as e:
@@ -115,12 +109,8 @@ def delete_chat_session(chat_id):
         return jsonify({'message': f'Deleted {chat_id}'})
     return jsonify({'error': 'Chat session not found'}), 404
 
-# Run the app
 if __name__ == '__main__':
     os.makedirs('static', exist_ok=True)
     os.makedirs('templates', exist_ok=True)
     print("✅ Flask is running...")
-
-    # Use Render-compatible host and port
-    port = int(os.environ.get('PORT', 5000))  # default to 5000 locally
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(debug=True)
